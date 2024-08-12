@@ -27,13 +27,17 @@ class MediaController:
         names = []
         for player in self.mpris_players:
             properties = dbus.Interface(player, 'org.freedesktop.DBus.Properties')
-            name = properties.Get('org.mpris.MediaPlayer2', 'Identity')
+            try:
+                name = properties.Get('org.mpris.MediaPlayer2', 'Identity')
+            except dbus.exceptions.DBusException as e:
+                log.warning(e)
+                continue
             if remove_duplicates:
                 if name in names:
                     continue
             names.append(str(name))
         return names
-    
+
     def get_matching_ifaces(self, player_name: str = None) -> list[dbus.Interface]:
         self.update_players()
         """
@@ -56,7 +60,7 @@ class MediaController:
             except dbus.exceptions.DBusException as e:
                 log.warning(e)
         return ifaces
-    
+
     def pause(self, player_name: str = None):
         """
         Pauses the media player specified by the `player_name` parameter.
@@ -100,7 +104,7 @@ class MediaController:
                 log.error(e)
                 status.append(False)
         return self.compress_list(status)
-        
+
     def toggle(self, player_name: str = None):
         """
         Toggles the playback state of the media player specified by the `player_name` parameter.
@@ -122,7 +126,7 @@ class MediaController:
                 log.error(e)
                 status.append(False)
         return self.compress_list(status)
-        
+
     def stop(self, player_name: str = None):
         """
         Stops the media player specified by the `player_name` parameter.
@@ -207,7 +211,7 @@ class MediaController:
                 status.append(None)
 
         return self.compress_list(status)
-    
+
     def title(self, player_name: str = None) -> list[str]:
         ifaces = self.get_matching_ifaces(player_name)
         titles = []
@@ -223,7 +227,7 @@ class MediaController:
                 titles.append(None)
 
         return self.compress_list(titles)
-    
+
     def artist(self, player_name: str = None) -> list[str]:
         ifaces = self.get_matching_ifaces(player_name)
         titles = []
@@ -239,7 +243,7 @@ class MediaController:
                 titles.append(None)
 
         return self.compress_list(titles)
-    
+
     def thumbnail(self, player_name: str = None) -> list[str]:
         ifaces = self.get_matching_ifaces(player_name)
         thumbnails = []
@@ -259,18 +263,18 @@ class MediaController:
                 thumbnails.append(None)
             except dbus.exceptions.DBusException as e:
                 log.error(e)
-                thumbnails.append(None)            
+                thumbnails.append(None)
 
         return self.compress_list(thumbnails)
 
     def compress_list(self, _list) -> list | bool:
         if len(_list) == 0:
             return None
-        
+
         def all_equal(iterable):
             if len(set(iterable)) == 0:
                 return True
-            
+
             first_element = iterable[0]
             first_element_occurrences = 0
             for element in iterable:
@@ -278,13 +282,13 @@ class MediaController:
                     first_element_occurrences += 1
 
             return first_element_occurrences == len(iterable)
-        
-        
+
+
         if all_equal(_list):
             return [_list[0]]
-        
+
         return _list
-    
+
     @lru_cache
     def get_web_thumnail(self, url: str) -> str:
         path = os.path.join(gl.DATA_PATH, "com_core447_MediaPlugin", "cache")
@@ -319,7 +323,7 @@ class MediaController:
         """
 
         response = requests.get(url, stream=True)
-        
+
         if file_name is None:
             file_name = self.get_file_name_from_url(url)
 
